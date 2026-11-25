@@ -120,6 +120,15 @@
     $("fane-ant").hidden = !nye; $("fane-ant").textContent = nye ? nye + " nye" : "";
   }
   function erEpostOk(e) { return /^E-post OK/.test(e.kontaktvei || ""); }
+  // Kort kontaktvei: epost | ring | skjema | ingen (fra «kontaktvei» i kundesøket)
+  function vei(e) {
+    var k = e.kontaktvei || "";
+    if (/^E-post OK/.test(k)) return "epost";
+    if (/^Ring/.test(k)) return "ring";
+    if (/^Kontaktskjema/.test(k)) return "skjema";
+    return "ingen";
+  }
+  var VEI = { epost: "E-post OK", ring: "Ring", skjema: "Skjema", ingen: "Ingen kontakt" };
   function trygUrl(s) {
     s = String(s || "").trim(); if (!s) return null;
     if (!/^https?:\/\//i.test(s)) s = "https://" + s.replace(/^\/+/, "");
@@ -135,8 +144,7 @@
 
   function emneTreff(e) {
     if ((e.score || 0) < +valg.escore) return false;
-    if (valg.ekontakt === "epost" && !erEpostOk(e)) return false;
-    if (valg.ekontakt === "ring" && erEpostOk(e)) return false;
+    if (valg.ekontakt !== "alle" && vei(e) !== valg.ekontakt) return false;
     if (valg.eperiode === "uke" && !nyDenneUka(e)) return false;
     if (valg.ebransje && e.naering_kode !== valg.ebransje) return false;
     return sokTreff(e.navn, e.naering, e.naering_kode, e.kommune, e.orgnr, (e.grunner || []).join(" "), e.plattform);
@@ -190,8 +198,8 @@
           h("span", { class: "emne-grunner" }, (e.grunner || []).map(function (g) { return h("span", { class: "lab", text: g }); }))
         ]),
         h("span", { class: "emne-kontakt" }, [
-          h("span", { class: "lab " + (erEpostOk(e) ? "ok-l" : ""), text: erEpostOk(e) ? "E-post OK" : "Ring" }),
-          h("span", { class: "emne-tlf", text: e.telefon || (erEpostOk(e) ? e.epost : "Ingen telefon i Brreg") })
+          h("span", { class: "lab " + (vei(e) === "epost" ? "ok-l" : ""), text: VEI[vei(e)] }),
+          h("span", { class: "emne-tlf", text: vei(e) === "epost" ? e.epost : (e.telefon || (vei(e) === "skjema" ? String(e.hjemmeside || "").replace(/^https?:\/\//, "").replace(/\/$/, "") : "Ingen kontaktinfo")) })
         ])
       ]));
     });
@@ -220,7 +228,8 @@
       liste("Kontakt", [
         e.kontaktvei || "–",
         "Telefon: " + (e.telefon || "ikke i Brreg"),
-        "E-post: " + (erEpostOk(e) && e.epost ? e.epost : "ikke bruk (ring i stedet)"),
+        "E-post: " + (erEpostOk(e) && e.epost ? e.epost : "ikke bruk"),
+        e.kontakt_kilde ? "Kontaktinfo fra: " + e.kontakt_kilde : null,
         "Nettside: " + (e.hjemmeside || "ingen funnet") + (e.nettside_status ? " (" + e.nettside_status + ")" : "") + (e.plattform ? " · " + e.plattform : ""),
         e.adresse ? "Adresse: " + e.adresse : null
       ].filter(Boolean)),
