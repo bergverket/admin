@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="nb">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' blob: data:; connect-src https://api.github.com; base-uri 'none'; form-action 'none'">
+<title>Bergverket HQ</title>
+<meta name="theme-color" content="#101315">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="icon" href="favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="stylesheet" href="hq.css">
+</head>
+<body>
+<header class="bar">
+  <div class="merke"><span class="kobber">▮</span> BERGVERKET <b>HQ</b></div>
+  <nav id="meny" hidden>
+    <span id="stempel" class="mono"></span>
+    <a href="https://github.com/bergverket/bergverket-hq/issues" target="_blank" rel="noopener">Issues</a>
+    <a href="https://github.com/bergverket/bergverket-hq/issues/new/choose" target="_blank" rel="noopener">+ Ny oppgave</a>
+    <a href="https://github.com/bergverket/bergverket-hq/blob/main/STATUS.md" target="_blank" rel="noopener">STATUS.md</a>
+    <a href="https://github.com/orgs/bergverket/projects/1" target="_blank" rel="noopener">Tavle</a>
+    <button id="oppdater" type="button" title="Hent på nytt">↻</button>
+    <button id="ut" type="button">Logg ut</button>
+  </nav>
+</header>
+
+<main>
+  <section id="inn" class="inn" hidden>
+    <p class="mono kobber">01 —— INTERNT</p>
+    <h1>Bare for Fabian og Viktor.</h1>
+    <p>Denne siden er et tomt skall. Dashbordet hentes rett fra det private repoet <code>bergverket-hq</code> med din egen GitHub-nøkkel. Uten nøkkel finnes det ingenting å se her.</p>
+    <ol>
+      <li><a id="lagnokkel" href="https://github.com/settings/personal-access-tokens/new?name=Bergverket%20HQ&amp;description=Lesetilgang%20til%20dashbordet%20p%C3%A5%20admin.bergverket.no&amp;target_name=bergverket&amp;expires_in=365&amp;contents=read" target="_blank" rel="noopener">Lag en lesenøkkel på GitHub</a>. Velg eier <b>bergverket</b>, <b>Only select repositories → bergverket-hq</b>, og under Permissions bare <b>Contents: Read-only</b>.</li>
+      <li>Kopier nøkkelen (starter med <code>github_pat_</code>) og lim den inn her.</li>
+    </ol>
+    <form id="skjema" autocomplete="off">
+      <label for="nokkel" class="mono">GITHUB-NØKKEL</label>
+      <div class="rad">
+        <input id="nokkel" type="password" spellcheck="false" placeholder="github_pat_…" required>
+        <button type="submit">Åpne</button>
+      </div>
+      <p id="feil" class="feil" role="alert" hidden></p>
+      <p class="liten">Nøkkelen lagres bare i denne nettleseren, aldri på en server. Bruk «Logg ut» på delte maskiner.</p>
+    </form>
+  </section>
+
+  <section id="vis" hidden>
+    <div id="laster" class="laster mono">HENTER FRA FJELLET …</div>
+    <img id="dashbord" alt="Bergverkets dashbord: kunder i flyten, oppgaver, hvem gjør hva og siste aktivitet" hidden>
+  </section>
+</main>
+<script src="hq.js"></script>
+</body>
+</html>
