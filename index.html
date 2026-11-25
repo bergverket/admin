@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow">
 <meta name="referrer" content="no-referrer">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' blob: data:; connect-src https://api.github.com; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' blob: data: https://avatars.githubusercontent.com; connect-src https://api.github.com; base-uri 'none'; form-action 'none'">
 <title>Bergverket HQ</title>
 <meta name="theme-color" content="#101315">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
@@ -15,29 +15,39 @@
 </head>
 <body>
 <header class="bar">
-  <div class="merke"><span class="kobber">▮</span> BERGVERKET <b>HQ</b></div>
-  <nav id="meny" hidden>
-    <span id="stempel" class="mono"></span>
-    <a href="https://github.com/bergverket/bergverket-hq/issues" target="_blank" rel="noopener">Issues</a>
-    <a href="https://github.com/bergverket/bergverket-hq/issues/new/choose" target="_blank" rel="noopener">+ Ny oppgave</a>
-    <a href="https://github.com/bergverket/bergverket-hq/blob/main/STATUS.md" target="_blank" rel="noopener">STATUS.md</a>
-    <a href="https://github.com/orgs/bergverket/projects/1" target="_blank" rel="noopener">Tavle</a>
-    <button id="oppdater" type="button" title="Hent på nytt">↻</button>
-    <button id="ut" type="button">Logg ut</button>
-  </nav>
+  <div class="merke"><span class="blokk" aria-hidden="true"></span>BERGVERKET <b>HQ</b></div>
+  <div id="verktoy" class="verktoy" hidden>
+    <div class="seg" role="group" aria-label="Vis for">
+      <button type="button" data-hvem="alle" aria-pressed="true">Alle</button>
+      <button type="button" data-hvem="fabian" aria-pressed="false"><i class="prikk f"></i>Fabian</button>
+      <button type="button" data-hvem="viktor" aria-pressed="false"><i class="prikk v"></i>Viktor</button>
+    </div>
+    <label class="sok"><span class="sr">Søk</span><input id="sok" type="search" placeholder="Søk  /" autocomplete="off"></label>
+    <button id="meny-knapp" class="ikon" type="button" aria-expanded="false" aria-controls="meny" title="Meny">☰</button>
+    <nav id="meny" class="meny" hidden>
+      <a href="https://github.com/bergverket/bergverket-hq/issues/new/choose" target="_blank" rel="noopener">+ Ny oppgave</a>
+      <a href="https://github.com/bergverket/bergverket-hq/issues" target="_blank" rel="noopener">Alle issues</a>
+      <a href="https://github.com/bergverket/bergverket-hq/pulls" target="_blank" rel="noopener">Pull requests</a>
+      <a href="https://github.com/bergverket/bergverket-hq/blob/main/STATUS.md" target="_blank" rel="noopener">STATUS.md</a>
+      <a href="https://github.com/bergverket/bergverket-hq/actions/workflows/dashbord.yml" target="_blank" rel="noopener">Tegn på nytt (Actions)</a>
+      <a href="https://github.com/orgs/bergverket/projects/1" target="_blank" rel="noopener">GitHub-tavla</a>
+      <button id="vis-bilde" type="button">Vis som bilde</button>
+      <button id="ut" type="button">Logg ut</button>
+    </nav>
+  </div>
 </header>
 
-<main>
+<main id="app">
   <section id="inn" class="inn" hidden>
-    <p class="mono kobber">01 —— INTERNT</p>
+    <p class="etikett"><span>01</span> INTERNT</p>
     <h1>Bare for Fabian og Viktor.</h1>
-    <p>Denne siden er et tomt skall. Dashbordet hentes rett fra det private repoet <code>bergverket-hq</code> med din egen GitHub-nøkkel. Uten nøkkel finnes det ingenting å se her.</p>
+    <p>Denne siden er et tomt skall. Alt innhold hentes rett fra det private repoet <code>bergverket-hq</code> med din egen GitHub-nøkkel. Uten nøkkel finnes det ingenting å se her.</p>
     <ol>
-      <li><a id="lagnokkel" href="https://github.com/settings/personal-access-tokens/new?name=Bergverket%20HQ&amp;description=Lesetilgang%20til%20dashbordet%20p%C3%A5%20admin.bergverket.no&amp;target_name=bergverket&amp;expires_in=365&amp;contents=read" target="_blank" rel="noopener">Lag en lesenøkkel på GitHub</a>. Velg eier <b>bergverket</b>, <b>Only select repositories → bergverket-hq</b>, og under Permissions bare <b>Contents: Read-only</b>.</li>
+      <li><a href="https://github.com/settings/personal-access-tokens/new?name=Bergverket%20HQ&amp;description=Lesetilgang%20til%20admin.bergverket.no&amp;target_name=bergverket&amp;expires_in=365&amp;contents=read" target="_blank" rel="noopener">Lag en lesenøkkel på GitHub</a>. Velg eier <b>bergverket</b>, <b>Only select repositories → bergverket-hq</b>, og under Permissions bare <b>Contents: Read-only</b>.</li>
       <li>Kopier nøkkelen (starter med <code>github_pat_</code>) og lim den inn her.</li>
     </ol>
     <form id="skjema" autocomplete="off">
-      <label for="nokkel" class="mono">GITHUB-NØKKEL</label>
+      <label for="nokkel">GITHUB-NØKKEL</label>
       <div class="rad">
         <input id="nokkel" type="password" spellcheck="false" placeholder="github_pat_…" required>
         <button type="submit">Åpne</button>
@@ -47,11 +57,80 @@
     </form>
   </section>
 
-  <section id="vis" hidden>
-    <div id="laster" class="laster mono">HENTER FRA FJELLET …</div>
-    <img id="dashbord" alt="Bergverkets dashbord: kunder i flyten, oppgaver, hvem gjør hva og siste aktivitet" hidden>
-  </section>
+  <div id="laster" class="laster" hidden><span class="bor" aria-hidden="true"></span>BORER NED I FJELLET …</div>
+
+  <div id="hq" hidden>
+    <section class="topp">
+      <div>
+        <p class="etikett"><span id="klokke">--.--</span> <span id="tegnet"></span></p>
+        <h1 id="hilsen">Flyten</h1>
+        <p id="oppsummering" class="ingress"></p>
+      </div>
+      <div class="nedtelling" id="nedtelling" hidden>
+        <p class="etikett" id="ned-hva"></p>
+        <div class="ned-tall" id="ned-tall"></div>
+        <button type="button" class="lenke" id="ned-kunde"></button>
+      </div>
+    </section>
+
+    <section class="kpi" id="kpi" aria-label="Nøkkeltall"></section>
+
+    <section class="blokk-s" aria-labelledby="h-flyt">
+      <div class="s-hode"><h2 id="h-flyt"><span>02</span> Kunder i flyten</h2><p class="hint">Klikk et kort for detaljer · rødt = ikke oppdatert på 14 dager</p></div>
+      <div class="flyt" id="flyt"></div>
+    </section>
+
+    <section class="blokk-s" aria-labelledby="h-folk">
+      <div class="s-hode"><h2 id="h-folk"><span>03</span> Hvem gjør hva nå</h2><p class="hint">Fra STATUS.md · klikk for å filtrere</p></div>
+      <div class="folk" id="folk"></div>
+    </section>
+
+    <section class="blokk-s" aria-labelledby="h-oppg">
+      <div class="s-hode">
+        <h2 id="h-oppg"><span>04</span> Oppgaver</h2>
+        <div class="chips" id="oppg-filter" role="group" aria-label="Filtrer oppgaver">
+          <button type="button" data-f="alle" aria-pressed="true">Alle</button>
+          <button type="button" data-f="kunde" aria-pressed="false">Kunde</button>
+          <button type="button" data-f="intern" aria-pressed="false">Intern</button>
+          <button type="button" data-f="uten" aria-pressed="false">Uten eier</button>
+        </div>
+      </div>
+      <div class="kanban" id="kanban"></div>
+    </section>
+
+    <section class="blokk-s to" aria-label="Aktivitet og pull requests">
+      <div>
+        <div class="s-hode"><h2><span>05</span> Siste aktivitet</h2>
+          <div class="chips" id="periode" role="group" aria-label="Periode">
+            <button type="button" data-d="14" aria-pressed="true">14 d</button>
+            <button type="button" data-d="30" aria-pressed="false">30 d</button>
+          </div>
+        </div>
+        <div class="kort graf-kort"><div id="graf" class="graf"></div><div id="graf-tips" class="tips" hidden></div></div>
+        <ol class="tidslinje" id="tidslinje"></ol>
+        <button type="button" class="mer" id="mer-logg" hidden>Vis mer</button>
+      </div>
+      <div>
+        <div class="s-hode"><h2><span>06</span> Pull requests</h2></div>
+        <div id="prs" class="prs"></div>
+      </div>
+    </section>
+
+    <footer class="fot">
+      <p>Endre i repoet (<code>kunde.md</code>, issues, <code>STATUS.md</code>), ikke her. Siden henter nytt hvert 5. minutt. Tastatur: <kbd>/</kbd> søk · <kbd>r</kbd> oppdater · <kbd>Esc</kbd> lukk.</p>
+      <p class="merke-liten">BERGVERKET</p>
+    </footer>
+  </div>
+
+  <div id="bilde-vis" hidden><img id="dashbord" alt="Bergverkets dashbord som bilde"></div>
 </main>
+
+<div id="skygge" class="skygge" hidden></div>
+<aside id="skuff" class="skuff" role="dialog" aria-modal="true" aria-labelledby="skuff-tittel" hidden>
+  <button type="button" class="lukk" id="lukk" aria-label="Lukk">✕</button>
+  <div id="skuff-innhold"></div>
+</aside>
+
 <script src="hq.js"></script>
 </body>
 </html>
