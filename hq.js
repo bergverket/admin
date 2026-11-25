@@ -13,7 +13,16 @@
   var D = null, bildeUrl = null, ikkeFunnetData = false;
   var E = null, emnerFeil = "", emnerVis = 50, P = null;
   var STATUS = "bergverket-hq-kontaktstatus";
-  var STATUSER = ["Ikke kontaktet", "Ringt, ikke svar", "Møte avtalt", "Tilbud sendt", "Ja", "Nei"];
+  var STATUSER = ["Ikke kontaktet", "E-post sendt", "Ringt, ikke svar", "Møte avtalt", "Tilbud sendt", "Ja", "Nei"];
+  var GAMLE = ["Ikke kontaktet", "Ringt, ikke svar", "Møte avtalt", "Tilbud sendt", "Ja", "Nei"];
+  // status per firma: lagret navn i nettleseren (eldre: tall), ellers status fra kontaktplanen
+  function statusFor(st, f) {
+    var v = st[f.orgnr];
+    if (typeof v === "number") v = GAMLE[v];
+    if (STATUSER.indexOf(v) < 0) v = f.status;
+    var i = STATUSER.indexOf(v);
+    return i < 0 ? 0 : i;
+  }
   var valg = les(VALG) || {};
   valg.hvem = valg.hvem || "alle"; valg.oppg = valg.oppg || "alle"; valg.dager = valg.dager || 14;
   valg.fane = valg.fane || "flyt"; valg.escore = valg.escore || "0"; valg.ekontakt = valg.ekontakt || "alle"; valg.eperiode = valg.eperiode || "alle"; valg.ebransje = valg.ebransje || "";
@@ -144,9 +153,10 @@
       var tlf = telUrl(f.telefon), nett = trygUrl(f.nettside), mail = mailUrl(f.epost, f.utkast_emne, f.utkast);
       var eier = FOLK[f.ansvarlig];
       var sel = h("select", { "aria-label": "Status for " + f.navn });
-      STATUSER.forEach(function (s, i) { sel.appendChild(h("option", { value: String(i), selected: String(st[f.orgnr] || 0) === String(i), text: s })); });
-      var kort = h("article", { class: "ring s" + (st[f.orgnr] || 0) });
-      sel.addEventListener("change", function () { st[f.orgnr] = +sel.value; skriv(STATUS, st); kort.className = "ring s" + sel.value; });
+      var naa = statusFor(st, f);
+      STATUSER.forEach(function (s, i) { sel.appendChild(h("option", { value: String(i), selected: naa === i, text: s })); });
+      var kort = h("article", { class: "ring s" + naa });
+      sel.addEventListener("change", function () { st[f.orgnr] = STATUSER[+sel.value]; skriv(STATUS, st); kort.className = "ring s" + sel.value; });
       var utkast = h("details", { class: "ring-utkast" }, [
         h("summary", { text: "Utkast" + (f.utkast_emne ? ": «" + f.utkast_emne + "»" : "") }),
         h("pre", { text: f.utkast || "" })
@@ -161,6 +171,7 @@
           sel
         ]),
         h("p", { class: "ring-funn", text: f.funn || "" }),
+        f.kontakt ? h("p", { class: "ring-kontakt" }, [h("b", { text: "Kontakt: " }), f.kontakt]) : null,
         f.apning ? h("p", { class: "ring-apning" }, [h("b", { text: "Åpning: " }), "«" + f.apning + "»"]) : null,
         f.tilbud ? h("p", { class: "ring-tilbud" }, [h("b", { text: "Tilby: " }), f.tilbud]) : null,
         h("div", { class: "ring-knapper" }, [

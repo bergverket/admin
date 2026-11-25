@@ -277,7 +277,8 @@ mark { background: rgba(229,122,65,.35); color: inherit; border-radius: 2px; }
 /* ---------- ring nå (kontaktplan) */
 .ring-liste { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 520px), 1fr)); gap: 12px; }
 .ring { background: var(--rock-2); border: 1px solid var(--line); border-left: 3px solid var(--ore); border-radius: var(--r); padding: 16px 18px; display: grid; gap: 10px; min-width: 0; }
-.ring.s1 { border-left-color: var(--v); } .ring.s2, .ring.s3 { border-left-color: var(--gronn); } .ring.s4 { border-left-color: var(--gronn); background: rgba(140,197,154,.08); } .ring.s5 { opacity: .55; border-left-color: var(--line); }
+.ring.s1, .ring.s2 { border-left-color: var(--v); } .ring.s3, .ring.s4 { border-left-color: var(--gronn); } .ring.s5 { border-left-color: var(--gronn); background: rgba(140,197,154,.08); } .ring.s6 { opacity: .55; border-left-color: var(--line); }
+.ring-kontakt { font-size: .85rem; }
 .ring-topp { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .ring-nr { font: 700 26px/1 var(--display, inherit); color: var(--ore); min-width: 26px; }
 .ring-navn { flex: 1 1 160px; min-width: 0; display: grid; gap: 2px; }
