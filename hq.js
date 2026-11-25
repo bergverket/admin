@@ -11,8 +11,11 @@
 
   var $ = function (id) { return document.getElementById(id); };
   var D = null, bildeUrl = null, ikkeFunnetData = false;
+  var E = null, emnerFeil = "", emnerVis = 50;
   var valg = les(VALG) || {};
   valg.hvem = valg.hvem || "alle"; valg.oppg = valg.oppg || "alle"; valg.dager = valg.dager || 14;
+  valg.fane = valg.fane || "flyt"; valg.escore = valg.escore || "0"; valg.ekontakt = valg.ekontakt || "alle"; valg.eperiode = valg.eperiode || "alle"; valg.ebransje = valg.ebransje || "";
+  if (location.hash === "#kundeemner") valg.fane = "emner";
   var sok = "", loggVis = 10, meg = null;
 
   // ---------- lagring (kan feile i privat modus)
@@ -52,13 +55,14 @@
   }
 
   // ---------- GitHub
-  function api(fil, n, type) {
-    return fetch("https://api.github.com/repos/" + REPO + "/contents/" + fil + "?ref=" + BRANCH + "&t=" + Date.now(), {
+  function feil(melding, status) { var e = new Error(melding); e.status = status; return e; }
+  function api(fil, n, type, ref) {
+    return fetch("https://api.github.com/repos/" + REPO + "/contents/" + fil + "?ref=" + (ref || BRANCH) + "&t=" + Date.now(), {
       headers: { Authorization: "Bearer " + n, Accept: "application/vnd.github.raw" }, cache: "no-store"
     }).then(function (r) {
-      if (r.status === 401) throw new Error("Nøkkelen virker ikke (utløpt eller feil). Lag en ny.");
-      if (r.status === 403 || r.status === 404) throw new Error("Nøkkelen har ikke lesetilgang til bergverket-hq, eller dashbordet er ikke laget ennå. Sjekk at eier er «bergverket», repoet er valgt og Contents er Read-only.");
-      if (!r.ok) throw new Error("GitHub svarte " + r.status + ". Prøv igjen om litt.");
+      if (r.status === 401) throw feil("Nøkkelen virker ikke (utløpt eller feil). Lag en ny.", 401);
+      if (r.status === 403 || r.status === 404) throw feil("Nøkkelen har ikke lesetilgang til bergverket-hq, eller dashbordet er ikke laget ennå. Sjekk at eier er «bergverket», repoet er valgt og Contents er Read-only.", r.status);
+      if (!r.ok) throw feil("GitHub svarte " + r.status + ". Prøv igjen om litt.", r.status);
       return type === "blob" ? r.blob() : r.json();
     });
   }
@@ -74,16 +78,161 @@
 
   // ---------- visning av tilstand
   function visInn(melding) {
-    ["hq", "laster", "verktoy", "bilde-vis"].forEach(function (id) { $(id).hidden = true; });
+    ["hq", "emner", "faner", "laster", "verktoy", "bilde-vis"].forEach(function (id) { $(id).hidden = true; });
     $("inn").hidden = false; $("feil").hidden = !melding; $("feil").textContent = melding || ""; $("nokkel").focus();
   }
   function last(n, stille) {
     if (!stille) { $("laster").hidden = false; $("inn").hidden = true; }
+    lastEmner(n);
     return api("data.json", n).then(function (d) {
-      D = d; $("laster").hidden = true; $("verktoy").hidden = false;
+      D = d; $("laster").hidden = true; $("verktoy").hidden = false; $("faner").hidden = false;
       if (!$("bilde-vis").hidden) return;
-      $("hq").hidden = false; tegn();
+      visFane(valg.fane);
     }).catch(function (e) { if (!stille) visInn(e.message); });
+  }
+
+  // ---------- faner
+  function visFane(f) {
+    valg.fane = f === "emner" ? "emner" : "flyt"; skriv(VALG, valg);
+    var emner = valg.fane === "emner";
+    $("hq").hidden = emner; $("emner").hidden = !emner;
+    document.querySelector(".seg").hidden = emner; // person-filteret gjelder bare flyten
+    document.querySelectorAll("#faner button").forEach(function (b) { b.setAttribute("aria-selected", String(b.dataset.fane === valg.fane)); });
+    if (emner) tegnEmner(); else tegn();
+  }
+  function tegnAktiv() { if (valg.fane === "emner") tegnEmner(); else tegn(); }
+
+  // ---------- kundeemner (branch «kundeemner», lages av kundesøket i bergverket-hq)
+  function lastEmner(n) {
+    return api("kundeemner.json", n, "json", "kundeemner").then(function (d) {
+      E = d; emnerFeil = "";
+    }).catch(function (e) {
+      E = null;
+      emnerFeil = e.status === 404 ? "Kundesøket har ikke kjørt ennå. Lista kommer etter første kjøring (mandag morgen, eller Actions → Kundesøk → Run workflow)." : e.message;
+    }).then(function () { tegnFaneTall(); if (valg.fane === "emner" && !$("emner").hidden) tegnEmner(); });
+  }
+  function nyDenneUka(e) {
+    var g = dato(E && E.generert), f = dato(e.funnet);
+    return !!(g && f && dagerMellom(f, g) < 7);
+  }
+  function tegnFaneTall() {
+    var nye = E ? (E.emner || []).filter(nyDenneUka).length : 0;
+    $("fane-ant").hidden = !nye; $("fane-ant").textContent = nye ? nye + " nye" : "";
+  }
+  function erEpostOk(e) { return /^E-post OK/.test(e.kontaktvei || ""); }
+  function trygUrl(s) {
+    s = String(s || "").trim(); if (!s) return null;
+    if (!/^https?:\/\//i.test(s)) s = "https://" + s.replace(/^\/+/, "");
+    try { var u = new URL(s); return /^https?:$/.test(u.protocol) ? u.href : null; } catch (x) { return null; }
+  }
+  function telUrl(t) {
+    var d = String(t || "").replace(/[^\d+]/g, "");
+    if (/^\d{8}$/.test(d)) d = "+47" + d;
+    return /^\+?\d{8,15}$/.test(d) ? "tel:" + d : null;
+  }
+  function scoreKlasse(s) { return s >= 70 ? "hoy" : s >= 50 ? "mid" : "lav"; }
+  function bransjeNavn(e) { return (e.naering || "Ukjent bransje") + (e.naering_kode ? " (" + e.naering_kode + ")" : ""); }
+
+  function emneTreff(e) {
+    if ((e.score || 0) < +valg.escore) return false;
+    if (valg.ekontakt === "epost" && !erEpostOk(e)) return false;
+    if (valg.ekontakt === "ring" && erEpostOk(e)) return false;
+    if (valg.eperiode === "uke" && !nyDenneUka(e)) return false;
+    if (valg.ebransje && e.naering_kode !== valg.ebransje) return false;
+    return sokTreff(e.navn, e.naering, e.naering_kode, e.kommune, e.orgnr, (e.grunner || []).join(" "), e.plattform);
+  }
+
+  function tegnEmner() {
+    document.querySelectorAll("#emner-score button").forEach(function (b) { b.setAttribute("aria-pressed", String(b.dataset.v === String(valg.escore))); });
+    document.querySelectorAll("#emner-kontakt button").forEach(function (b) { b.setAttribute("aria-pressed", String(b.dataset.v === valg.ekontakt)); });
+    document.querySelectorAll("#emner-periode button").forEach(function (b) { b.setAttribute("aria-pressed", String(b.dataset.v === valg.eperiode)); });
+    var ut = tom($("emner-liste")), kpi = tom($("emner-kpi")), sel = tom($("emner-bransje"));
+    if (!E) {
+      $("emner-tid").textContent = ""; $("emner-ingress").textContent = "";
+      ut.appendChild(h("div", { class: "tom", text: emnerFeil || "Henter kundeemner …" }));
+      $("emner-mer").hidden = true; document.querySelector(".emner-filter").hidden = true; return;
+    }
+    document.querySelector(".emner-filter").hidden = false;
+    var alle = E.emner || [];
+    $("emner-tid").textContent = "· oppdatert " + siden(dato(E.generert));
+    var ing = tom($("emner-ingress"));
+    ing.appendChild(h("b", { text: alle.length + " bedrifter" }));
+    ing.appendChild(document.createTextNode(" som kan trenge nettside eller nettbutikk, fra de siste " + (E.behold_dager || 90) + " dagene. Søk: " + (E.filter || "–") + "."));
+
+    // bransjevelger med antall
+    var tell = {};
+    alle.forEach(function (e) { var k = e.naering_kode || ""; tell[k] = tell[k] || { n: 0, navn: bransjeNavn(e) }; tell[k].n++; });
+    sel.hidden = false;
+    sel.appendChild(h("option", { value: "", text: "Alle bransjer (" + alle.length + ")" }));
+    Object.keys(tell).sort(function (a, b) { return tell[b].n - tell[a].n || a.localeCompare(b); }).forEach(function (k) {
+      sel.appendChild(h("option", { value: k, selected: k === valg.ebransje, text: tell[k].navn + " · " + tell[k].n }));
+    });
+    if (valg.ebransje && !tell[valg.ebransje]) valg.ebransje = "";
+
+    var fliser = [
+      { t: alle.length, n: "Kundeemner, 90 d", u: "Alle med score 30+", gjor: function () { valg.escore = "0"; valg.ekontakt = "alle"; valg.eperiode = "alle"; valg.ebransje = ""; } },
+      { t: alle.filter(nyDenneUka).length, n: "Nye denne uka", u: "Fra siste kjøring", farge: "var(--ore)", gjor: function () { valg.eperiode = "uke"; } },
+      { t: alle.filter(function (e) { return e.score >= 70; }).length, n: "Score 70+", u: "De mest lovende", gjor: function () { valg.escore = "70"; } },
+      { t: alle.filter(erEpostOk).length, n: "E-post OK", u: "Generell adresse, lov å sende", farge: "var(--gronn)", gjor: function () { valg.ekontakt = "epost"; } }
+    ];
+    fliser.forEach(function (f) {
+      kpi.appendChild(h("button", { type: "button", class: "tall-kort", onclick: function () { f.gjor(); emnerVis = 50; skriv(VALG, valg); tegnEmner(); } },
+        [h("p", { class: "etikett", text: f.n }), h("div", { class: "t", style: f.farge ? "color:" + f.farge : null, text: String(f.t) }), h("div", { class: "u", text: f.u })]));
+    });
+
+    var vis = alle.filter(emneTreff);
+    vis.slice(0, emnerVis).forEach(function (e) {
+      ut.appendChild(h("button", { type: "button", class: "emne", onclick: function () { apneEmne(e); } }, [
+        h("span", { class: "score " + scoreKlasse(e.score), title: "Score " + e.score + " av 100", text: String(e.score) }),
+        h("span", { class: "emne-hoved" }, [
+          h("span", { class: "emne-navn" }, [e.navn, nyDenneUka(e) ? h("span", { class: "lab kunde-l", text: "NY" }) : null]),
+          h("span", { class: "emne-meta", text: [bransjeNavn(e), e.kommune, e.orgform].filter(Boolean).join(" · ") }),
+          h("span", { class: "emne-grunner" }, (e.grunner || []).map(function (g) { return h("span", { class: "lab", text: g }); }))
+        ]),
+        h("span", { class: "emne-kontakt" }, [
+          h("span", { class: "lab " + (erEpostOk(e) ? "ok-l" : ""), text: erEpostOk(e) ? "E-post OK" : "Ring" }),
+          h("span", { class: "emne-tlf", text: e.telefon || (erEpostOk(e) ? e.epost : "Ingen telefon i Brreg") })
+        ])
+      ]));
+    });
+    if (!vis.length) ut.appendChild(h("div", { class: "tom", text: alle.length ? "Ingen kundeemner passer filteret." : "Ingen kundeemner ennå." }));
+    $("emner-mer").hidden = vis.length <= emnerVis;
+    $("emner-mer").textContent = "Vis mer (" + (vis.length - emnerVis) + " til)";
+  }
+
+  function apneEmne(e) {
+    var nett = trygUrl(e.hjemmeside), tlf = telUrl(e.telefon), brreg = trygUrl(e.brreg);
+    var kopier = h("button", { type: "button", class: "knapp", text: "Kopier utkast" });
+    kopier.addEventListener("click", function () {
+      var ok = function () { kopier.textContent = "Kopiert ✓"; setTimeout(function () { kopier.textContent = "Kopier utkast"; }, 1800); };
+      try { navigator.clipboard.writeText(e.utkast || "").then(ok, function () { kopier.textContent = "Marker og kopier selv"; }); }
+      catch (x) { kopier.textContent = "Marker og kopier selv"; }
+    });
+    apneSkuff([
+      h("p", { class: "etikett", text: "Kundeemne · score " + e.score + " · funnet " + kort(dato(e.funnet)) }),
+      h("h2", { id: "skuff-tittel", text: e.navn }),
+      h("div", { class: "rad-meta" }, [
+        h("span", { class: "lab", text: bransjeNavn(e) }),
+        e.orgform ? h("span", { class: "lab", text: e.orgform }) : null,
+        h("span", { class: "liten-l", text: "Registrert " + (e.registrert || "–") + " · orgnr " + (e.orgnr || "–") })
+      ]),
+      liste("Hvorfor de kan trenge oss", e.grunner),
+      liste("Kontakt", [
+        e.kontaktvei || "–",
+        "Telefon: " + (e.telefon || "ikke i Brreg"),
+        "E-post: " + (erEpostOk(e) && e.epost ? e.epost : "ikke bruk (ring i stedet)"),
+        "Nettside: " + (e.hjemmeside || "ingen funnet") + (e.nettside_status ? " (" + e.nettside_status + ")" : "") + (e.plattform ? " · " + e.plattform : ""),
+        e.adresse ? "Adresse: " + e.adresse : null
+      ].filter(Boolean)),
+      e.utkast ? h("div", null, [h("h3", { text: "Utkast til første melding" }), h("pre", { text: e.utkast })]) : null,
+      h("div", null, [
+        e.utkast ? kopier : null,
+        tlf ? h("a", { class: "knapp sek", href: tlf, text: "Ring" }) : null,
+        nett ? h("a", { class: "knapp sek", href: nett, target: "_blank", rel: "noopener noreferrer", text: "Nettsiden" }) : null,
+        brreg ? h("a", { class: "knapp sek", href: brreg, target: "_blank", rel: "noopener noreferrer", text: "Brreg" }) : null
+      ]),
+      h("p", { class: "liten-l", style: "margin-top:18px", text: "Ingenting sendes herfra. Sjekk nettsiden og et raskt søk før du skriver «dere har ikke nettside». Send bare e-post når det står «E-post OK»." })
+    ]);
   }
 
   // ---------- filter
@@ -385,7 +534,13 @@
   document.querySelectorAll(".seg button").forEach(function (b) { b.addEventListener("click", function () { settHvem(b.dataset.hvem); }); });
   document.querySelectorAll("#oppg-filter button").forEach(function (b) { b.addEventListener("click", function () { valg.oppg = b.dataset.f; skriv(VALG, valg); tegn(); }); });
   document.querySelectorAll("#periode button").forEach(function (b) { b.addEventListener("click", function () { valg.dager = +b.dataset.d; skriv(VALG, valg); tegn(); }); });
-  $("sok").addEventListener("input", function (e) { sok = e.target.value.trim().toLowerCase(); tegn(); });
+  $("sok").addEventListener("input", function (e) { sok = e.target.value.trim().toLowerCase(); emnerVis = 50; tegnAktiv(); });
+  document.querySelectorAll("#faner button").forEach(function (b) { b.addEventListener("click", function () { visFane(b.dataset.fane); }); });
+  [["emner-score", "escore"], ["emner-kontakt", "ekontakt"], ["emner-periode", "eperiode"]].forEach(function (p) {
+    document.querySelectorAll("#" + p[0] + " button").forEach(function (b) { b.addEventListener("click", function () { valg[p[1]] = b.dataset.v; emnerVis = 50; skriv(VALG, valg); tegnEmner(); }); });
+  });
+  $("emner-bransje").addEventListener("change", function (e) { valg.ebransje = e.target.value; emnerVis = 50; skriv(VALG, valg); tegnEmner(); });
+  $("emner-mer").addEventListener("click", function () { emnerVis += 50; tegnEmner(); });
   $("mer-logg").addEventListener("click", function () { loggVis += 15; tegnLogg(); });
   $("meny-knapp").addEventListener("click", function () { var a = $("meny").hidden; $("meny").hidden = !a; $("meny-knapp").setAttribute("aria-expanded", String(a)); });
   document.addEventListener("click", function (e) { if (!$("meny").hidden && !e.target.closest("#meny") && e.target !== $("meny-knapp")) $("meny").hidden = true; });
@@ -393,17 +548,17 @@
   document.addEventListener("keydown", function (e) {
     if (e.key === "Escape") { lukkSkuff(); $("meny").hidden = true; return; }
     var iFelt = /INPUT|TEXTAREA/.test((document.activeElement || {}).tagName || "");
-    if (iFelt || $("hq").hidden) return;
+    if (iFelt || ($("hq").hidden && $("emner").hidden)) return;
     if (e.key === "/") { e.preventDefault(); $("sok").focus(); }
     if (e.key === "r") { var n = nokkel(); if (n) last(n, true); }
   });
   $("vis-bilde").addEventListener("click", function () {
     var n = nokkel(); if (!n) return; $("meny").hidden = true;
-    if (!$("bilde-vis").hidden) { $("bilde-vis").hidden = true; $("hq").hidden = false; $("vis-bilde").textContent = "Vis som bilde"; return; }
+    if (!$("bilde-vis").hidden) { $("bilde-vis").hidden = true; $("faner").hidden = false; $("vis-bilde").textContent = "Vis som bilde"; visFane(valg.fane); return; }
     api("dashbord.svg", n, "blob").then(function (b) {
       if (bildeUrl) URL.revokeObjectURL(bildeUrl);
       bildeUrl = URL.createObjectURL(new Blob([b], { type: "image/svg+xml" }));
-      $("dashbord").src = bildeUrl; $("hq").hidden = true; $("bilde-vis").hidden = false; $("vis-bilde").textContent = "Vis interaktivt";
+      $("dashbord").src = bildeUrl; $("hq").hidden = true; $("emner").hidden = true; $("faner").hidden = true; $("bilde-vis").hidden = false; $("vis-bilde").textContent = "Vis interaktivt";
     }).catch(function () {});
   });
   $("skjema").addEventListener("submit", function (ev) {
@@ -411,7 +566,7 @@
     var v = $("nokkel").value.trim(); if (!v) return;
     api("data.json", v).then(function () { skriv(NOKKEL, v); $("nokkel").value = ""; start(v); }).catch(function (e) { visInn(e.message); });
   });
-  $("ut").addEventListener("click", function () { try { localStorage.removeItem(NOKKEL); } catch (e) {} D = null; meg = null; visInn(""); });
+  $("ut").addEventListener("click", function () { try { localStorage.removeItem(NOKKEL); } catch (e) {} D = null; E = null; meg = null; visInn(""); });
 
   function start(n) {
     hvemErJeg(n).then(function (m) { meg = m; if (D) tegnTopp(new Date()); });
@@ -421,6 +576,7 @@
   setInterval(function () {
     var k = new Date(); $("klokke").textContent = String(k.getHours()).padStart(2, "0") + "." + String(k.getMinutes()).padStart(2, "0");
     if (D && !$("hq").hidden) { tegnTopp(k); }
+    if (E && !$("emner").hidden) { $("emner-tid").textContent = "· oppdatert " + siden(dato(E.generert)); }
   }, 30 * 1000);
   document.addEventListener("visibilitychange", function () { var n = nokkel(); if (n && !document.hidden) last(n, true); });
   (function () { var k = new Date(); $("klokke").textContent = String(k.getHours()).padStart(2, "0") + "." + String(k.getMinutes()).padStart(2, "0"); })();
