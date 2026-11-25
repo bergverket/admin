@@ -11,7 +11,9 @@
 
   var $ = function (id) { return document.getElementById(id); };
   var D = null, bildeUrl = null, ikkeFunnetData = false;
-  var E = null, emnerFeil = "", emnerVis = 50;
+  var E = null, emnerFeil = "", emnerVis = 50, P = null;
+  var STATUS = "bergverket-hq-kontaktstatus";
+  var STATUSER = ["Ikke kontaktet", "Ringt, ikke svar", "Møte avtalt", "Tilbud sendt", "Ja", "Nei"];
   var valg = les(VALG) || {};
   valg.hvem = valg.hvem || "alle"; valg.oppg = valg.oppg || "alle"; valg.dager = valg.dager || 14;
   valg.fane = valg.fane || "flyt"; valg.escore = valg.escore || "0"; valg.ekontakt = valg.ekontakt || "alle"; valg.eperiode = valg.eperiode || "alle"; valg.ebransje = valg.ebransje || "";
@@ -83,7 +85,7 @@
   }
   function last(n, stille) {
     if (!stille) { $("laster").hidden = false; $("inn").hidden = true; }
-    lastEmner(n);
+    lastEmner(n); lastPlan(n);
     return api("data.json", n).then(function (d) {
       D = d; $("laster").hidden = true; $("verktoy").hidden = false; $("faner").hidden = false;
       if (!$("bilde-vis").hidden) return;
@@ -111,6 +113,72 @@
       emnerFeil = e.status === 404 ? "Kundesøket har ikke kjørt ennå. Lista kommer etter første kjøring (mandag morgen, eller Actions → Kundesøk → Run workflow)." : e.message;
     }).then(function () { tegnFaneTall(); if (valg.fane === "emner" && !$("emner").hidden) tegnEmner(); });
   }
+  // ---------- kontaktplan (main i bergverket-hq: kundejakt/kontaktplan.json, firma sjekket for hånd)
+  function lastPlan(n) {
+    return api("kundejakt/kontaktplan.json", n, "json", "main").then(function (d) { P = d; })
+      .catch(function () { P = null; })
+      .then(function () { if (valg.fane === "emner" && !$("emner").hidden) tegnPlan(); });
+  }
+  function mailUrl(adr, emne, tekst) {
+    adr = String(adr || "").trim();
+    if (!/^[^\s@<>"]+@[^\s@<>"]+\.[a-z]{2,}$/i.test(adr)) return null;
+    return "mailto:" + adr + "?subject=" + encodeURIComponent(emne || "") + "&body=" + encodeURIComponent(tekst || "");
+  }
+  function visTlf(t) { var d = String(t || "").replace(/\D/g, ""); return d.length === 8 ? d.replace(/(\d{2})(\d{2})(\d{2})(\d{2})/, "$1 $2 $3 $4") : t; }
+  function kopierKnapp(tekst, navn) {
+    var b = h("button", { type: "button", class: "knapp sek", text: navn });
+    b.addEventListener("click", function () {
+      var ok = function () { b.textContent = "Kopiert ✓"; setTimeout(function () { b.textContent = navn; }, 1800); };
+      try { navigator.clipboard.writeText(tekst || "").then(ok, function () { b.textContent = "Marker og kopier selv"; }); }
+      catch (x) { b.textContent = "Marker og kopier selv"; }
+    });
+    return b;
+  }
+  function tegnPlan() {
+    var blokk = $("ring-blokk"), ut = tom($("ring-liste"));
+    if (!P || !(P.firma || []).length) { blokk.hidden = true; return; }
+    blokk.hidden = false;
+    var st = les(STATUS) || {};
+    $("ring-hint").textContent = "Sjekket for hånd " + (P.oppdatert || "") + " · status lagres bare i denne nettleseren";
+    P.firma.slice().sort(function (a, b) { return (a.nr || 99) - (b.nr || 99); }).forEach(function (f) {
+      var tlf = telUrl(f.telefon), nett = trygUrl(f.nettside), mail = mailUrl(f.epost, f.utkast_emne, f.utkast);
+      var eier = FOLK[f.ansvarlig];
+      var sel = h("select", { "aria-label": "Status for " + f.navn });
+      STATUSER.forEach(function (s, i) { sel.appendChild(h("option", { value: String(i), selected: String(st[f.orgnr] || 0) === String(i), text: s })); });
+      var kort = h("article", { class: "ring s" + (st[f.orgnr] || 0) });
+      sel.addEventListener("change", function () { st[f.orgnr] = +sel.value; skriv(STATUS, st); kort.className = "ring s" + sel.value; });
+      var utkast = h("details", { class: "ring-utkast" }, [
+        h("summary", { text: "Utkast" + (f.utkast_emne ? ": «" + f.utkast_emne + "»" : "") }),
+        h("pre", { text: f.utkast || "" })
+      ]);
+      [h("div", { class: "ring-topp" }, [
+          h("span", { class: "ring-nr", text: String(f.nr || "") }),
+          h("div", { class: "ring-navn" }, [
+            h("h3", { text: f.navn }),
+            h("span", { class: "emne-meta", text: [f.bransje, f.sted].filter(Boolean).join(" · ") })
+          ]),
+          eier ? h("span", { class: "lab", style: "color:" + eier.farge + ";border-color:" + eier.farge, text: eier.navn }) : null,
+          sel
+        ]),
+        h("p", { class: "ring-funn", text: f.funn || "" }),
+        f.apning ? h("p", { class: "ring-apning" }, [h("b", { text: "Åpning: " }), "«" + f.apning + "»"]) : null,
+        f.tilbud ? h("p", { class: "ring-tilbud" }, [h("b", { text: "Tilby: " }), f.tilbud]) : null,
+        h("div", { class: "ring-knapper" }, [
+          tlf ? h("a", { class: "knapp", href: tlf, text: "Ring " + visTlf(f.telefon) }) : null,
+          mail ? h("a", { class: "knapp sek", href: mail, text: "E-post til " + f.epost }) : null,
+          f.utkast ? kopierKnapp(f.utkast, "Kopier utkast") : null,
+          nett ? h("a", { class: "knapp sek", href: nett, target: "_blank", rel: "noopener noreferrer", text: "Nettsiden" }) : null
+        ]),
+        f.utkast ? utkast : null
+      ].forEach(function (b) { if (b) kort.appendChild(b); });
+      ut.appendChild(kort);
+    });
+    var ol = tom($("ring-manus-liste"));
+    (P.manus || []).forEach(function (m) { ol.appendChild(h("li", { text: m })); });
+    $("ring-manus").hidden = !(P.manus || []).length;
+    $("ring-droppet").textContent = (P.droppet || []).length ? "Droppet etter sjekk: " + P.droppet.map(function (d) { return d.navn + " (" + d.grunn + ")"; }).join(" · ") : "";
+  }
+
   function nyDenneUka(e) {
     var g = dato(E && E.generert), f = dato(e.funnet);
     return !!(g && f && dagerMellom(f, g) < 7);
@@ -126,9 +194,10 @@
     if (/^E-post OK/.test(k)) return "epost";
     if (/^Ring/.test(k)) return "ring";
     if (/^Kontaktskjema/.test(k)) return "skjema";
+    if (/^Melding/.test(k)) return "some";
     return "ingen";
   }
-  var VEI = { epost: "E-post OK", ring: "Ring", skjema: "Skjema", ingen: "Ingen kontakt" };
+  var VEI = { epost: "E-post OK", ring: "Ring", skjema: "Skjema", some: "Melding", ingen: "Ingen kontakt" };
   function trygUrl(s) {
     s = String(s || "").trim(); if (!s) return null;
     if (!/^https?:\/\//i.test(s)) s = "https://" + s.replace(/^\/+/, "");
@@ -151,6 +220,7 @@
   }
 
   function tegnEmner() {
+    tegnPlan();
     document.querySelectorAll("#emner-score button").forEach(function (b) { b.setAttribute("aria-pressed", String(b.dataset.v === String(valg.escore))); });
     document.querySelectorAll("#emner-kontakt button").forEach(function (b) { b.setAttribute("aria-pressed", String(b.dataset.v === valg.ekontakt)); });
     document.querySelectorAll("#emner-periode button").forEach(function (b) { b.setAttribute("aria-pressed", String(b.dataset.v === valg.eperiode)); });
@@ -199,7 +269,7 @@
         ]),
         h("span", { class: "emne-kontakt" }, [
           h("span", { class: "lab " + (vei(e) === "epost" ? "ok-l" : ""), text: VEI[vei(e)] }),
-          h("span", { class: "emne-tlf", text: vei(e) === "epost" ? e.epost : (e.telefon || (vei(e) === "skjema" ? String(e.hjemmeside || "").replace(/^https?:\/\//, "").replace(/\/$/, "") : "Ingen kontaktinfo")) })
+          h("span", { class: "emne-tlf", text: vei(e) === "epost" ? e.epost : (e.telefon || (vei(e) === "skjema" ? String(e.hjemmeside || "").replace(/^https?:\/\//, "").replace(/\/$/, "") : vei(e) === "some" && e.sosiale && e.sosiale.length ? String(e.sosiale[0]).replace(/^https?:\/\/(www\.)?/, "") : "Ingen kontaktinfo")) })
         ])
       ]));
     });
@@ -230,6 +300,9 @@
         "Telefon: " + (e.telefon || "ikke i Brreg"),
         "E-post: " + (erEpostOk(e) && e.epost ? e.epost : "ikke bruk"),
         e.kontakt_kilde ? "Kontaktinfo fra: " + e.kontakt_kilde : null,
+        e.sosiale && e.sosiale.length ? "Sosiale medier: " + e.sosiale.join(", ") : null,
+        e.ansatte ? "Ansatte: " + e.ansatte : null,
+        e.omsetning ? "Omsetning: " + (e.omsetning / 1e6).toFixed(1).replace(".", ",") + " mill. kr (" + (e.omsetning_aar || "?") + ")" : null,
         "Nettside: " + (e.hjemmeside || "ingen funnet") + (e.nettside_status ? " (" + e.nettside_status + ")" : "") + (e.plattform ? " · " + e.plattform : ""),
         e.adresse ? "Adresse: " + e.adresse : null
       ].filter(Boolean)),

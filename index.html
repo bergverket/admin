@@ -139,9 +139,19 @@
 
     <section class="kpi kpi-4" id="emner-kpi" aria-label="Nøkkeltall for kundeemner"></section>
 
+    <section class="blokk-s" id="ring-blokk" aria-labelledby="h-ring" hidden>
+      <div class="s-hode">
+        <h2 id="h-ring"><span>02</span> Ring nå</h2>
+        <p class="hint" id="ring-hint"></p>
+      </div>
+      <div id="ring-liste" class="ring-liste"></div>
+      <details class="manus" id="ring-manus"><summary>Ringemanus</summary><ol id="ring-manus-liste"></ol></details>
+      <p class="liten-l" id="ring-droppet"></p>
+    </section>
+
     <section class="blokk-s" aria-labelledby="h-emner">
       <div class="s-hode">
-        <h2 id="h-emner"><span>02</span> Hvem skal vi kontakte</h2>
+        <h2 id="h-emner"><span>03</span> Alle kundeemner fra søket</h2>
         <div class="emner-filter">
           <div class="chips" id="emner-score" role="group" aria-label="Score">
             <button type="button" data-v="0" aria-pressed="true">Alle</button>
@@ -153,6 +163,7 @@
             <button type="button" data-v="epost" aria-pressed="false">E-post OK</button>
             <button type="button" data-v="ring" aria-pressed="false">Ring</button>
             <button type="button" data-v="skjema" aria-pressed="false">Skjema</button>
+            <button type="button" data-v="some" aria-pressed="false">Melding</button>
           </div>
           <div class="chips" id="emner-periode" role="group" aria-label="Periode">
             <button type="button" data-v="alle" aria-pressed="true">90 d</button>
