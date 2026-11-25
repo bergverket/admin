@@ -126,9 +126,10 @@
     if (/^E-post OK/.test(k)) return "epost";
     if (/^Ring/.test(k)) return "ring";
     if (/^Kontaktskjema/.test(k)) return "skjema";
+    if (/^Melding/.test(k)) return "some";
     return "ingen";
   }
-  var VEI = { epost: "E-post OK", ring: "Ring", skjema: "Skjema", ingen: "Ingen kontakt" };
+  var VEI = { epost: "E-post OK", ring: "Ring", skjema: "Skjema", some: "Melding", ingen: "Ingen kontakt" };
   function trygUrl(s) {
     s = String(s || "").trim(); if (!s) return null;
     if (!/^https?:\/\//i.test(s)) s = "https://" + s.replace(/^\/+/, "");
@@ -199,7 +200,7 @@
         ]),
         h("span", { class: "emne-kontakt" }, [
           h("span", { class: "lab " + (vei(e) === "epost" ? "ok-l" : ""), text: VEI[vei(e)] }),
-          h("span", { class: "emne-tlf", text: vei(e) === "epost" ? e.epost : (e.telefon || (vei(e) === "skjema" ? String(e.hjemmeside || "").replace(/^https?:\/\//, "").replace(/\/$/, "") : "Ingen kontaktinfo")) })
+          h("span", { class: "emne-tlf", text: vei(e) === "epost" ? e.epost : (e.telefon || (vei(e) === "skjema" ? String(e.hjemmeside || "").replace(/^https?:\/\//, "").replace(/\/$/, "") : vei(e) === "some" && e.sosiale && e.sosiale.length ? String(e.sosiale[0]).replace(/^https?:\/\/(www\.)?/, "") : "Ingen kontaktinfo")) })
         ])
       ]));
     });
@@ -230,6 +231,9 @@
         "Telefon: " + (e.telefon || "ikke i Brreg"),
         "E-post: " + (erEpostOk(e) && e.epost ? e.epost : "ikke bruk"),
         e.kontakt_kilde ? "Kontaktinfo fra: " + e.kontakt_kilde : null,
+        e.sosiale && e.sosiale.length ? "Sosiale medier: " + e.sosiale.join(", ") : null,
+        e.ansatte ? "Ansatte: " + e.ansatte : null,
+        e.omsetning ? "Omsetning: " + (e.omsetning / 1e6).toFixed(1).replace(".", ",") + " mill. kr (" + (e.omsetning_aar || "?") + ")" : null,
         "Nettside: " + (e.hjemmeside || "ingen funnet") + (e.nettside_status ? " (" + e.nettside_status + ")" : "") + (e.plattform ? " · " + e.plattform : ""),
         e.adresse ? "Adresse: " + e.adresse : null
       ].filter(Boolean)),
