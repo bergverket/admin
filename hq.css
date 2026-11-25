@@ -53,3 +53,10 @@ form button:hover { filter: brightness(1.08); }
 .feil { color: var(--red); margin: 12px 0 0; font-size: 14px; }
 .liten { font-size: 13px; margin: 14px 0 0; }
 @media (max-width: 520px) { .rad { flex-direction: column; } form button { padding: 12px; } }
+@media (max-width: 760px) {
+  #vis { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  #dashbord { width: 980px; max-width: none; }
+  #stempel { display: none; }
+  nav { gap: 4px 12px; font-size: 13px; }
+  .merke { font-size: 19px; }
+}
