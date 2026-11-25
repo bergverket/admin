@@ -30,6 +30,7 @@
       <a href="https://github.com/bergverket/bergverket-hq/pulls" target="_blank" rel="noopener">Pull requests</a>
       <a href="https://github.com/bergverket/bergverket-hq/blob/main/STATUS.md" target="_blank" rel="noopener">STATUS.md</a>
       <a href="https://github.com/bergverket/bergverket-hq/actions/workflows/dashbord.yml" target="_blank" rel="noopener">Tegn på nytt (Actions)</a>
+      <a href="https://github.com/bergverket/bergverket-hq/actions/workflows/kundesok.yml" target="_blank" rel="noopener">Kjør kundesøk (Actions)</a>
       <a href="https://github.com/orgs/bergverket/projects/1" target="_blank" rel="noopener">GitHub-tavla</a>
       <button id="vis-bilde" type="button">Vis som bilde</button>
       <button id="ut" type="button">Logg ut</button>
@@ -58,6 +59,11 @@
   </section>
 
   <div id="laster" class="laster" hidden><span class="bor" aria-hidden="true"></span>BORER NED I FJELLET …</div>
+
+  <nav id="faner" class="faner" role="tablist" aria-label="Visning" hidden>
+    <button type="button" role="tab" id="fane-flyt" data-fane="flyt" aria-selected="true" aria-controls="hq">Flyten</button>
+    <button type="button" role="tab" id="fane-emner" data-fane="emner" aria-selected="false" aria-controls="emner">Kundeemner <span class="ant" id="fane-ant" hidden></span></button>
+  </nav>
 
   <div id="hq" hidden>
     <section class="topp">
@@ -118,6 +124,48 @@
 
     <footer class="fot">
       <p>Endre i repoet (<code>kunde.md</code>, issues, <code>STATUS.md</code>), ikke her. Siden henter nytt hvert 5. minutt. Tastatur: <kbd>/</kbd> søk · <kbd>r</kbd> oppdater · <kbd>Esc</kbd> lukk.</p>
+      <p class="merke-liten">BERGVERKET</p>
+    </footer>
+  </div>
+
+  <div id="emner" class="emner" role="tabpanel" aria-labelledby="fane-emner" hidden>
+    <section class="topp">
+      <div>
+        <p class="etikett"><span>KUNDESØK</span> <span id="emner-tid"></span></p>
+        <h1>Kunde<em>emner</em></h1>
+        <p id="emner-ingress" class="ingress"></p>
+      </div>
+    </section>
+
+    <section class="kpi kpi-4" id="emner-kpi" aria-label="Nøkkeltall for kundeemner"></section>
+
+    <section class="blokk-s" aria-labelledby="h-emner">
+      <div class="s-hode">
+        <h2 id="h-emner"><span>02</span> Hvem skal vi kontakte</h2>
+        <div class="emner-filter">
+          <div class="chips" id="emner-score" role="group" aria-label="Score">
+            <button type="button" data-v="0" aria-pressed="true">Alle</button>
+            <button type="button" data-v="50" aria-pressed="false">50+</button>
+            <button type="button" data-v="70" aria-pressed="false">70+</button>
+          </div>
+          <div class="chips" id="emner-kontakt" role="group" aria-label="Kontaktvei">
+            <button type="button" data-v="alle" aria-pressed="true">Alle</button>
+            <button type="button" data-v="epost" aria-pressed="false">E-post OK</button>
+            <button type="button" data-v="ring" aria-pressed="false">Ring</button>
+          </div>
+          <div class="chips" id="emner-periode" role="group" aria-label="Periode">
+            <button type="button" data-v="alle" aria-pressed="true">90 d</button>
+            <button type="button" data-v="uke" aria-pressed="false">Nye denne uka</button>
+          </div>
+          <label class="velg"><span class="sr">Bransje</span><select id="emner-bransje"></select></label>
+        </div>
+      </div>
+      <div id="emner-liste" class="emner-liste"></div>
+      <button type="button" class="mer" id="emner-mer" hidden>Vis mer</button>
+    </section>
+
+    <footer class="fot">
+      <p>Lages hver mandag av kundesøket i <code>bergverket-hq</code> (<code>verktoy/kundesok/</code>) fra Enhetsregisteret og en sjekk av nettsidene. Ingenting sendes automatisk. Send bare e-post der det står «E-post OK». Ellers ring. Utkastene er et utgangspunkt: les nettsiden deres og skriv om før du sender.</p>
       <p class="merke-liten">BERGVERKET</p>
     </footer>
   </div>
